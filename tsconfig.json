@@ -1,15 +1,15 @@
 {
     "compilerOptions": {
-      "target": "ESNext",         // Versão do ECMAScript de destino
-      "module": "CommonJS",       // Sistema de módulos a ser usado (CommonJS para Node.js)
-      "outDir": "./dist",         // Diretório de saída para os arquivos compilados
-      "rootDir": "./src",         // Diretório raiz dos arquivos de origem TypeScript
-      "strict": true,             // Ativa verificações de tipo mais rigorosas
-      "esModuleInterop": true,    // Permite a importação de módulos CommonJS como ES6
-      "forceConsistentCasingInFileNames": true, // Garante consistência em nomes de arquivo
-      "resolveJsonModule": true   // Permite importar arquivos JSON como módulos
+      "target": "ESNext",      
+      "module": "CommonJS",     
+      "outDir": "./dist",         
+      "rootDir": "./src",         
+      "strict": true,          
+      "esModuleInterop": true,  
+      "forceConsistentCasingInFileNames": true, 
+      "resolveJsonModule": true  
     },
-    "include": ["src/**/*.ts"],   // Padrão de inclusão de arquivos TypeScript
-    "exclude": ["node_modules"]   // Padrão de exclusão de diretórios
+    "include": ["src/**/*.ts"],   
+    "exclude": ["node_modules"]   
   }
   
