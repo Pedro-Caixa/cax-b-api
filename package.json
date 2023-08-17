@@ -6,6 +6,7 @@
   "engines": {
     "node": "18.x"
   },
+  "type": "module",
   "scripts": {
     "start": "ts-node src/server.ts",
     "dev": "ts-node src/server.ts",
