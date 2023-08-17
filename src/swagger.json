@@ -1,0 +1,93 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Unofficial Blueprint Groups API",
+        "description": "An unofficial API for accessing blueprint groups related information",
+        "termsOfService": "https://roblox.com/terms-of-service",
+        "contact": {
+            "email": "caxseiiiia@gmail.com"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:12121/api/v1",
+            "description": "Development server"
+        }
+    ],
+    "paths": {
+        "/b/gar/check-user/{userId}": {
+            "get": {
+                "summary": "Check user information",
+                "description": "Check user information based on their user ID.",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "description": "User ID of the Roblox user",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "id": 123456789,
+                                    "username": "exampleUser",
+                                    "isGarMember": true,
+                                    "isVip": false,
+                                    "isKos": false,
+                                    "isAos": false,
+                                    "isBlacklisted": false,
+                                    "divisions": {
+                                        "cg": {
+                                            "id": 5369125,
+                                            "rank": "Company Commander",
+                                            "rankId": 6
+                                        }
+                                    },
+                                    "departments": false
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "error": "Access denied, invalid API key"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "error": "User not found"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "example": {
+                                    "error": "An error occurred"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
