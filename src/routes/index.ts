@@ -193,7 +193,7 @@ router.get('/b/check-user/:userId', async (req: Request, res: Response) => {
     res.json(userData);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'An error occurred' });
+    res.status(500).json({ error: 'An error occurred!' });
   }
 });
 
