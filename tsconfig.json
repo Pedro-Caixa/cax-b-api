@@ -8,7 +8,6 @@
       "esModuleInterop": true,    // Permite a importação de módulos CommonJS como ES6
       "forceConsistentCasingInFileNames": true, // Garante consistência em nomes de arquivo
       "resolveJsonModule": true   // Permite importar arquivos JSON como módulos
-      
     },
     "include": ["src/**/*.ts"],   // Padrão de inclusão de arquivos TypeScript
     "exclude": ["node_modules"]   // Padrão de exclusão de diretórios
