@@ -9,7 +9,7 @@
   "scripts": {
     "start": "ts-node src/server.ts",
     "dev": "ts-node src/server.ts",
-    "build": "npx tsc"
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
