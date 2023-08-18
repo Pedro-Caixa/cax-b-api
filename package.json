@@ -7,8 +7,8 @@
     "node": "18.x"
   },
   "scripts": {
-    "start": "ts-node src/server.ts",
-    "dev": "ts-node src/server.ts",
+    "start": "src/server.ts",
+    "dev": "src/server.ts",
     "build": "tsc"
   },
   "keywords": [],
