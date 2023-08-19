@@ -3,7 +3,7 @@
     "info": {
         "title": "Unofficial Blueprint Groups API",
         "description": "An unofficial API for accessing blueprint groups related information",
-        "termsOfService": "https://roblox.com/terms-of-service",
+        "termsOfService": "https://caxseii.dev/tos",
         "contact": {
             "email": "caxseiiiia@gmail.com"
         },
@@ -11,7 +11,7 @@
     },
     "servers": [
         {
-            "url": "http://localhost:12121/api/v1",
+            "url": "https://caxseii.dev/api/v1",
             "description": "Development server"
         }
     ],

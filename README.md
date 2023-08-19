@@ -8,7 +8,7 @@ Kindly note that this API is unofficial, and I do not hold any rights associated
 
 
 ## Documentation
-You can access the documentation [here](https://pip.pypa.io/en/stable/)
+You can access the documentation [here](https://caxseii.dev/api-docs/)
 
 ## License
 
