@@ -7,33 +7,20 @@ exports.router = void 0;
 const express_1 = require("express");
 const noblox_js_1 = __importDefault(require("noblox.js"));
 const node_cache_1 = __importDefault(require("node-cache"));
-const bottleneck_1 = __importDefault(require("bottleneck"));
 exports.router = (0, express_1.Router)();
-const limiter = new bottleneck_1.default({
-    maxConcurrent: 1,
-    minTime: 1000,
-});
-function checkApiKey(req, res, next) {
-    const apiKey = req.header('Authorization');
-    console.log('Api key received: ' + apiKey);
-    if (apiKey && process.env[`API_KEY_${apiKey}`]) {
-        next();
-    }
-    else {
-        res.status(401).json({ error: 'Access denied, invalid API key' });
-    }
-}
-const cache = new node_cache_1.default({ stdTTL: 3600 });
+const rankCache = new node_cache_1.default({ stdTTL: 30 });
 exports.router.get('/', (req, res) => res.send('API started'));
 exports.router.get('/b/gar/check-user/:userId', async (req, res) => {
     const userId = req.params.userId;
     const userIdNumber = parseInt(userId);
-    console.log('Processing API request for user:', userIdNumber); // Adicione este log
     try {
-        const cachedUserData = cache.get(`userData_${userIdNumber}`);
-        if (cachedUserData) {
-            return res.json(cachedUserData);
+        const cachedData = rankCache.get(`userData_${userIdNumber}`);
+        if (cachedData) {
+            console.log('Using cached user data for user:', userIdNumber);
+            res.json(cachedData);
+            return;
         }
+        console.log('Fetching user data from Roblox API for user:', userIdNumber);
         let rbxUsername;
         try {
             rbxUsername = await noblox_js_1.default.getUsernameFromId(userIdNumber);
@@ -44,19 +31,7 @@ exports.router.get('/b/gar/check-user/:userId', async (req, res) => {
             }
             throw usernameError;
         }
-        const getRankInGroupWithCache = async (groupId, userId) => {
-            const cacheKey = `rank_${groupId}_${userId}`;
-            const cachedRank = cache.get(cacheKey);
-            if (cachedRank) {
-                console.log(`Using cached rank for group ${groupId} and user ${userId}`);
-                return cachedRank;
-            }
-            const rank = await noblox_js_1.default.getRankInGroup(groupId, userId);
-            cache.set(cacheKey, rank);
-            console.log(`Fetching rank from API for group ${groupId} and user ${userId}`);
-            return rank;
-        };
-        const rankId = await limiter.schedule(() => getRankInGroupWithCache(5214183, userIdNumber));
+        const rankId = await noblox_js_1.default.getRankInGroup(5214183, userIdNumber);
         const isGarMember = rankId === 0 ? false : true;
         const isVip = rankId > 130 ? true : false;
         const divisionGroupsJSON = {
@@ -77,7 +52,7 @@ exports.router.get('/b/gar/check-user/:userId', async (req, res) => {
         };
         const departmentGroupsJSON = {
             "trj": 14259016,
-            "cet": 15319534
+            "cet": 15319534,
         };
         const kosGroupsJSON = {
             "SOE": 6981749,
@@ -87,12 +62,7 @@ exports.router.get('/b/gar/check-user/:userId', async (req, res) => {
             if (Object.prototype.hasOwnProperty.call(kosGroupsJSON, kosGroupName)) {
                 const groupId = kosGroupsJSON[kosGroupName];
                 const userRankId = await noblox_js_1.default.getRankInGroup(groupId, userIdNumber);
-                if (userRankId >= 1) {
-                    userKosGroups[kosGroupName] = true;
-                }
-                else {
-                    userKosGroups[kosGroupName] = false;
-                }
+                userKosGroups[kosGroupName] = userRankId >= 1;
             }
         }
         const userDivisions = {};
@@ -101,27 +71,19 @@ exports.router.get('/b/gar/check-user/:userId', async (req, res) => {
             if (Object.prototype.hasOwnProperty.call(divisionGroupsJSON, divisionName)) {
                 const groupId = divisionGroupsJSON[divisionName];
                 const userRankId = await noblox_js_1.default.getRankInGroup(groupId, userIdNumber);
-                const rankName = await limiter.schedule(() => noblox_js_1.default.getRankNameInGroup(groupId, userIdNumber));
+                const rankName = await noblox_js_1.default.getRankNameInGroup(groupId, userIdNumber);
                 if (userRankId >= 1) {
-                    userDivisions[divisionName] = {
-                        id: groupId,
-                        rank: rankName,
-                        rankId: userRankId
-                    };
+                    userDivisions[divisionName] = { id: groupId, rank: rankName, rankId: userRankId };
                 }
             }
         }
         for (const departmentName in departmentGroupsJSON) {
             if (Object.prototype.hasOwnProperty.call(departmentGroupsJSON, departmentName)) {
-                const depgroupId = departmentGroupsJSON[departmentName];
-                const userRankId = await noblox_js_1.default.getRankInGroup(depgroupId, userIdNumber);
-                const rankName = await limiter.schedule(() => noblox_js_1.default.getRankNameInGroup(depgroupId, userIdNumber));
+                const groupId = departmentGroupsJSON[departmentName];
+                const userRankId = await noblox_js_1.default.getRankInGroup(groupId, userIdNumber);
+                const rankName = await noblox_js_1.default.getRankNameInGroup(groupId, userIdNumber);
                 if (userRankId >= 1) {
-                    userDepartments[departmentName] = {
-                        id: depgroupId,
-                        rank: rankName,
-                        rankId: userRankId
-                    };
+                    userDepartments[departmentName] = { id: groupId, rank: rankName, rankId: userRankId };
                 }
             }
         }
@@ -136,7 +98,8 @@ exports.router.get('/b/gar/check-user/:userId', async (req, res) => {
             divisions: Object.keys(userDivisions).length > 0 ? userDivisions : false,
             departments: Object.keys(userDepartments).length > 0 ? userDepartments : false,
         };
-        cache.set(`userData_${userIdNumber}`, userData);
+        // Armazenar os dados no cache
+        rankCache.set(`userData_${userIdNumber}`, userData);
         res.json(userData);
     }
     catch (error) {
@@ -147,8 +110,15 @@ exports.router.get('/b/gar/check-user/:userId', async (req, res) => {
 exports.router.get('/b/check-user/:userId', async (req, res) => {
     const userId = req.params.userId;
     const userIdNumber = parseInt(userId);
-    const username = await noblox_js_1.default.getUsernameFromId(userIdNumber);
     try {
+        const cachedData = rankCache.get(`rankData_${userIdNumber}`);
+        if (cachedData) {
+            console.log('Using cached rank data for user:', userIdNumber);
+            res.json(cachedData);
+            return;
+        }
+        console.log('Fetching rank data from Roblox API for user:', userIdNumber);
+        const username = await noblox_js_1.default.getUsernameFromId(userIdNumber);
         const userRank = await noblox_js_1.default.getRankInGroup(13320442, userIdNumber);
         const b_rank = userRank === 0 ? false : `${userRank}`;
         const departmentGroupsJSON = {
@@ -161,10 +131,7 @@ exports.router.get('/b/check-user/:userId', async (req, res) => {
                 const groupId = departmentGroupsJSON[departmentName];
                 const userDepartmentRank = await noblox_js_1.default.getRankInGroup(groupId, userIdNumber);
                 if (userDepartmentRank >= 1) {
-                    b_departments[departmentName] = {
-                        id: groupId,
-                        rank: userDepartmentRank,
-                    };
+                    b_departments[departmentName] = { id: groupId, rank: userDepartmentRank };
                 }
             }
         }
@@ -174,6 +141,7 @@ exports.router.get('/b/check-user/:userId', async (req, res) => {
             b_rank: b_rank,
             b_departments: Object.keys(b_departments).length > 0 ? b_departments : false,
         };
+        rankCache.set(`rankData_${userIdNumber}`, userData);
         res.json(userData);
     }
     catch (error) {

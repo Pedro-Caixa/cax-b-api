@@ -1,42 +1,29 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
 import noblox from 'noblox.js';
 import NodeCache from 'node-cache';
-import Bottleneck from 'bottleneck';
 
 export const router = Router();
 
-const limiter = new Bottleneck({
-  maxConcurrent: 1, 
-  minTime: 1000,   
-});
+const rankCache = new NodeCache({ stdTTL: 30 });
 
-function checkApiKey(req: Request, res: Response, next: NextFunction) {
-  const apiKey = req.header('Authorization'); 
 
-  console.log('Api key received: ' + apiKey);
-
-  if (apiKey && process.env[`API_KEY_${apiKey}`]) {
-    next();
-  } else {
-    res.status(401).json({ error: 'Access denied, invalid API key' });
-  }
-}
-
-const cache = new NodeCache({ stdTTL: 3600 });
 router.get('/', (req, res) => res.send('API started'));
 
 router.get('/b/gar/check-user/:userId', async (req, res) => {
   const userId = req.params.userId;
   const userIdNumber = parseInt(userId);
 
-  console.log('Processing API request for user:', userIdNumber); // Adicione este log
-
   try {
-
-    const cachedUserData = cache.get<any>(`userData_${userIdNumber}`);
-    if (cachedUserData) {
-      return res.json(cachedUserData);
+    const cachedData = rankCache.get<any>(`userData_${userIdNumber}`);
+    
+    if (cachedData) {
+      console.log('Using cached user data for user:', userIdNumber);
+      res.json(cachedData);
+      return;
     }
+
+    console.log('Fetching user data from Roblox API for user:', userIdNumber);
+
     let rbxUsername;
     try {
       rbxUsername = await noblox.getUsernameFromId(userIdNumber);
@@ -44,24 +31,13 @@ router.get('/b/gar/check-user/:userId', async (req, res) => {
       if (typeof usernameError.message === 'string' && usernameError.message.includes('User does not exist')) {
         return res.status(404).json({ error: 'User not found' });
       }
-      throw usernameError; 
+      throw usernameError;
     }
-    const getRankInGroupWithCache = async (groupId: number, userId: number) => {
-      const cacheKey = `rank_${groupId}_${userId}`;
-      const cachedRank = cache.get<number>(cacheKey);
-      if (cachedRank) {
-        console.log(`Using cached rank for group ${groupId} and user ${userId}`);
-        return cachedRank;
-      }
-      const rank = await noblox.getRankInGroup(groupId, userId);
-      cache.set(cacheKey, rank);
-      console.log(`Fetching rank from API for group ${groupId} and user ${userId}`);
-      return rank;
-    };
-    const rankId = await limiter.schedule(() => getRankInGroupWithCache(5214183, userIdNumber));
+    
+    const rankId = await noblox.getRankInGroup(5214183, userIdNumber);
     const isGarMember = rankId === 0 ? false : true;
     const isVip = rankId > 130 ? true : false;
-
+    
     const divisionGroupsJSON: Record<string, number> = {
       "cg": 5369125,
       "rg": 5352039,
@@ -77,11 +53,11 @@ router.get('/b/gar/check-user/:userId', async (req, res) => {
       "501st": 5352023,
       "ri": 5352000,
       "senate": 12681565
-      };
+    };
 
     const departmentGroupsJSON: Record<string, number> = {
       "trj": 14259016,
-      "cet": 15319534
+      "cet": 15319534,
     };
 
     const kosGroupsJSON: Record<string, number> = {
@@ -94,11 +70,7 @@ router.get('/b/gar/check-user/:userId', async (req, res) => {
       if (Object.prototype.hasOwnProperty.call(kosGroupsJSON, kosGroupName)) {
         const groupId = kosGroupsJSON[kosGroupName];
         const userRankId = await noblox.getRankInGroup(groupId, userIdNumber);
-        if (userRankId >= 1) {
-          userKosGroups[kosGroupName] = true;
-        } else {
-          userKosGroups[kosGroupName] = false;
-        }
+        userKosGroups[kosGroupName] = userRankId >= 1;
       }
     }
 
@@ -109,28 +81,20 @@ router.get('/b/gar/check-user/:userId', async (req, res) => {
       if (Object.prototype.hasOwnProperty.call(divisionGroupsJSON, divisionName)) {
         const groupId = divisionGroupsJSON[divisionName];
         const userRankId = await noblox.getRankInGroup(groupId, userIdNumber);
-        const rankName = await limiter.schedule(() => noblox.getRankNameInGroup(groupId, userIdNumber));
+        const rankName = await noblox.getRankNameInGroup(groupId, userIdNumber);
         if (userRankId >= 1) {
-          userDivisions[divisionName] = {
-            id: groupId,
-            rank: rankName,
-            rankId: userRankId
-          };
+          userDivisions[divisionName] = { id: groupId, rank: rankName, rankId: userRankId };
         }
       }
     }
 
     for (const departmentName in departmentGroupsJSON) {
       if (Object.prototype.hasOwnProperty.call(departmentGroupsJSON, departmentName)) {
-        const depgroupId = departmentGroupsJSON[departmentName];
-        const userRankId = await noblox.getRankInGroup(depgroupId, userIdNumber);
-        const rankName = await limiter.schedule(() => noblox.getRankNameInGroup(depgroupId, userIdNumber));
+        const groupId = departmentGroupsJSON[departmentName];
+        const userRankId = await noblox.getRankInGroup(groupId, userIdNumber);
+        const rankName = await noblox.getRankNameInGroup(groupId, userIdNumber);
         if (userRankId >= 1) {
-          userDepartments[departmentName] = {
-            id: depgroupId,
-            rank: rankName,
-            rankId: userRankId
-          };
+          userDepartments[departmentName] = { id: groupId, rank: rankName, rankId: userRankId };
         }
       }
     }
@@ -146,27 +110,38 @@ router.get('/b/gar/check-user/:userId', async (req, res) => {
       divisions: Object.keys(userDivisions).length > 0 ? userDivisions : false,
       departments: Object.keys(userDepartments).length > 0 ? userDepartments : false,
     };
-    cache.set(`userData_${userIdNumber}`, userData);
+
+    // Armazenar os dados no cache
+    rankCache.set(`userData_${userIdNumber}`, userData);
+    
     res.json(userData);
   } catch (error) {
     console.error(error);
-      res.status(500).json({ error: 'An error occurred' });
-    }
+    res.status(500).json({ error: 'An error occurred' });
+  }
 });
-
-router.get('/b/check-user/:userId', async (req: Request, res: Response) => {
+router.get('/b/check-user/:userId', async (req, res) => {
   const userId = req.params.userId;
   const userIdNumber = parseInt(userId);
 
-  const username = await noblox.getUsernameFromId(userIdNumber);
-
   try {
+    const cachedData = rankCache.get<any>(`rankData_${userIdNumber}`);
+    
+    if (cachedData) {
+      console.log('Using cached rank data for user:', userIdNumber);
+      res.json(cachedData);
+      return;
+    }
+
+    console.log('Fetching rank data from Roblox API for user:', userIdNumber);
+
+    const username = await noblox.getUsernameFromId(userIdNumber);
     const userRank = await noblox.getRankInGroup(13320442, userIdNumber);
     const b_rank = userRank === 0 ? false : `${userRank}`;
-
+    
     const departmentGroupsJSON: Record<string, number> = {
-      "internal_affairs": 7036991,  
-      "moderation_team": 13639962,  
+      "internal_affairs": 7036991,
+      "moderation_team": 13639962,
     };
 
     const b_departments: Record<string, { id: number; rank: number }> = {};
@@ -176,13 +151,11 @@ router.get('/b/check-user/:userId', async (req: Request, res: Response) => {
         const groupId = departmentGroupsJSON[departmentName];
         const userDepartmentRank = await noblox.getRankInGroup(groupId, userIdNumber);
         if (userDepartmentRank >= 1) {
-          b_departments[departmentName] = {
-            id: groupId,
-            rank: userDepartmentRank,
-          };
+          b_departments[departmentName] = { id: groupId, rank: userDepartmentRank };
         }
       }
     }
+
     const userData = {
       id: userIdNumber,
       username: username,
@@ -190,11 +163,14 @@ router.get('/b/check-user/:userId', async (req: Request, res: Response) => {
       b_departments: Object.keys(b_departments).length > 0 ? b_departments : false,
     };
 
+    rankCache.set(`rankData_${userIdNumber}`, userData);
+    
     res.json(userData);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'An error occurred!' });
   }
 });
+
 
 export default router;

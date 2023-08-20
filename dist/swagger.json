@@ -3,15 +3,15 @@
     "info": {
         "title": "Unofficial Blueprint Groups API",
         "description": "An unofficial API for accessing blueprint groups related information",
-        "termsOfService": "https://caxseii.dev/tos",
+        "termsOfService": "https://api.caxseii.dev/tos",
         "contact": {
             "email": "caxseiiiia@gmail.com"
         },
-        "version": "1.0.0"
+        "version": "1.0.2"
     },
     "servers": [
         {
-            "url": "https://caxseii.dev/api/v1",
+            "url": "https://api.caxseii.dev/api/v1",
             "description": "Development server"
         }
     ],
