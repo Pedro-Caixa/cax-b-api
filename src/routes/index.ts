@@ -1,28 +1,24 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import noblox from 'noblox.js';
 import NodeCache from 'node-cache';
 
 export const router = Router();
 
-const rankCache = new NodeCache({ stdTTL: 30 });
+const userCache = new NodeCache({ stdTTL: 604800 }); // Cache dura 7 dias
 
-
-router.get('/', (req, res) => res.send('API started'));
+router.get('/', (_, res) => res.send('API started'));
 
 router.get('/b/gar/check-user/:userId', async (req, res) => {
   const userId = req.params.userId;
   const userIdNumber = parseInt(userId);
 
   try {
-    const cachedData = rankCache.get<any>(`userData_${userIdNumber}`);
+    const cachedData = userCache.get<any>(`userData_${userIdNumber}`);
     
     if (cachedData) {
-      console.log('Using cached user data for user:', userIdNumber);
       res.json(cachedData);
       return;
     }
-
-    console.log('Fetching user data from Roblox API for user:', userIdNumber);
 
     let rbxUsername;
     try {
@@ -39,29 +35,29 @@ router.get('/b/gar/check-user/:userId', async (req, res) => {
     const isVip = rankId > 130 ? true : false;
     
     const divisionGroupsJSON: Record<string, number> = {
-      "cg": 5369125,
-      "rg": 5352039,
-      "sg": 32072079,
-      "barc": 6652666,
-      "arc": 6018571,
-      "rc": 5352093,
-      "187th": 6286429,
-      "7th": 6077194,
-      "41st": 5810035,
-      "327th": 5674426,
-      "104th": 5668908,
-      "501st": 5352023,
-      "ri": 5352000,
-      "senate": 12681565
-    };
+        "cg": 5369125,
+        "rg": 5352039,
+        "sg": 32072079,
+        "barc": 6652666,
+        "arc": 6018571,
+        "rc": 5352093,
+        "187th": 6286429,
+        "7th": 6077194,
+        "41st": 5810035,
+        "327th": 5674426,
+        "104th": 5668908,
+        "501st": 5352023,
+        "ri": 5352000,
+        "senate": 12681565
+        };
 
     const departmentGroupsJSON: Record<string, number> = {
-      "trj": 14259016,
-      "cet": 15319534,
-    };
+        "trj": 14259016,
+        "cet": 15319534,
+        };
 
     const kosGroupsJSON: Record<string, number> = {
-      "SOE": 6981749,
+        "SOE": 6981749,
     };
 
     const userKosGroups: Record<string, boolean> = {};
@@ -111,8 +107,7 @@ router.get('/b/gar/check-user/:userId', async (req, res) => {
       departments: Object.keys(userDepartments).length > 0 ? userDepartments : false,
     };
 
-    // Armazenar os dados no cache
-    rankCache.set(`userData_${userIdNumber}`, userData);
+    userCache.set(`userData_${userIdNumber}`, userData);
     
     res.json(userData);
   } catch (error) {
@@ -120,29 +115,27 @@ router.get('/b/gar/check-user/:userId', async (req, res) => {
     res.status(500).json({ error: 'An error occurred' });
   }
 });
+
 router.get('/b/check-user/:userId', async (req, res) => {
   const userId = req.params.userId;
   const userIdNumber = parseInt(userId);
 
   try {
-    const cachedData = rankCache.get<any>(`rankData_${userIdNumber}`);
+    const cachedData = userCache.get<any>(`userData_${userIdNumber}`);
     
     if (cachedData) {
-      console.log('Using cached rank data for user:', userIdNumber);
       res.json(cachedData);
       return;
     }
-
-    console.log('Fetching rank data from Roblox API for user:', userIdNumber);
 
     const username = await noblox.getUsernameFromId(userIdNumber);
     const userRank = await noblox.getRankInGroup(13320442, userIdNumber);
     const b_rank = userRank === 0 ? false : `${userRank}`;
     
     const departmentGroupsJSON: Record<string, number> = {
-      "internal_affairs": 7036991,
-      "moderation_team": 13639962,
-    };
+        "internal_affairs": 7036991,
+        "moderation_team": 13639962,
+        };
 
     const b_departments: Record<string, { id: number; rank: number }> = {};
 
@@ -163,7 +156,7 @@ router.get('/b/check-user/:userId', async (req, res) => {
       b_departments: Object.keys(b_departments).length > 0 ? b_departments : false,
     };
 
-    rankCache.set(`rankData_${userIdNumber}`, userData);
+    userCache.set(`userData_${userIdNumber}`, userData);
     
     res.json(userData);
   } catch (error) {
@@ -171,6 +164,5 @@ router.get('/b/check-user/:userId', async (req, res) => {
     res.status(500).json({ error: 'An error occurred!' });
   }
 });
-
 
 export default router;

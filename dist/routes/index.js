@@ -8,19 +8,17 @@ const express_1 = require("express");
 const noblox_js_1 = __importDefault(require("noblox.js"));
 const node_cache_1 = __importDefault(require("node-cache"));
 exports.router = (0, express_1.Router)();
-const rankCache = new node_cache_1.default({ stdTTL: 30 });
-exports.router.get('/', (req, res) => res.send('API started'));
+const userCache = new node_cache_1.default({ stdTTL: 604800 }); // Cache dura 7 dias
+exports.router.get('/', (_, res) => res.send('API started'));
 exports.router.get('/b/gar/check-user/:userId', async (req, res) => {
     const userId = req.params.userId;
     const userIdNumber = parseInt(userId);
     try {
-        const cachedData = rankCache.get(`userData_${userIdNumber}`);
+        const cachedData = userCache.get(`userData_${userIdNumber}`);
         if (cachedData) {
-            console.log('Using cached user data for user:', userIdNumber);
             res.json(cachedData);
             return;
         }
-        console.log('Fetching user data from Roblox API for user:', userIdNumber);
         let rbxUsername;
         try {
             rbxUsername = await noblox_js_1.default.getUsernameFromId(userIdNumber);
@@ -98,8 +96,7 @@ exports.router.get('/b/gar/check-user/:userId', async (req, res) => {
             divisions: Object.keys(userDivisions).length > 0 ? userDivisions : false,
             departments: Object.keys(userDepartments).length > 0 ? userDepartments : false,
         };
-        // Armazenar os dados no cache
-        rankCache.set(`userData_${userIdNumber}`, userData);
+        userCache.set(`userData_${userIdNumber}`, userData);
         res.json(userData);
     }
     catch (error) {
@@ -111,13 +108,11 @@ exports.router.get('/b/check-user/:userId', async (req, res) => {
     const userId = req.params.userId;
     const userIdNumber = parseInt(userId);
     try {
-        const cachedData = rankCache.get(`rankData_${userIdNumber}`);
+        const cachedData = userCache.get(`userData_${userIdNumber}`);
         if (cachedData) {
-            console.log('Using cached rank data for user:', userIdNumber);
             res.json(cachedData);
             return;
         }
-        console.log('Fetching rank data from Roblox API for user:', userIdNumber);
         const username = await noblox_js_1.default.getUsernameFromId(userIdNumber);
         const userRank = await noblox_js_1.default.getRankInGroup(13320442, userIdNumber);
         const b_rank = userRank === 0 ? false : `${userRank}`;
@@ -141,7 +136,7 @@ exports.router.get('/b/check-user/:userId', async (req, res) => {
             b_rank: b_rank,
             b_departments: Object.keys(b_departments).length > 0 ? b_departments : false,
         };
-        rankCache.set(`rankData_${userIdNumber}`, userData);
+        userCache.set(`userData_${userIdNumber}`, userData);
         res.json(userData);
     }
     catch (error) {
