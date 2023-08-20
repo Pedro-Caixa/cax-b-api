@@ -11,7 +11,7 @@
     },
     "servers": [
       {
-        "url": "https://caxseii.dev/api/v1",
+        "url": "https://api.caxseii.dev/api/v1",
         "description": "Development server"
       }
     ],
